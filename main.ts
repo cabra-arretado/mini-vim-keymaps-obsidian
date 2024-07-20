@@ -42,7 +42,7 @@ export default class MiniVimrc extends Plugin {
 	private CodeMirrorVimObj: VimType;
 	private vimrcPath: string;
 	private mapleader = '\\';
-	private mapleader_queue: Array<string>;
+	private mapleader_queue: Array<string> = [];
 
 	private async process_vimrc(): Promise<void> {
 		if (this.vimrcPath) {
@@ -72,7 +72,8 @@ export default class MiniVimrc extends Plugin {
 		}
 		const line_tokens = trimmed_line.split(' ');
 
-		if (trimmed_line.startsWith('let mapleader=')) {
+		console.log("let mapleader",trimmed_line, trimmed_line.startsWith('let mapleader'))
+		if (trimmed_line.startsWith('let mapleader')) {
 			// Set the mapleader
 			if (line_tokens.length < 3) {
 				this.logger(`Could not set mapleader. Line "${line_tokens.join(" ")}" is not well formatted`);
