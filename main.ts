@@ -41,6 +41,8 @@ export default class MiniVimrc extends Plugin {
 	settings: MiniVimrcSettings;
 	private CodeMirrorVimObj: VimType;
 	private vimrcPath: string;
+	private mapleader = '\\';
+	private mapleader_queue: Array<string> = [];
 
 	private async process_vimrc(): Promise<void> {
 		if (this.vimrcPath) {
@@ -51,6 +53,7 @@ export default class MiniVimrc extends Plugin {
 			for (const line of lines) {
 				this.process_line(line);
 			}
+			this.process_mapleader_queue()
 			new Notice('Vimrc loaded!')
 		}
 	}
@@ -68,13 +71,41 @@ export default class MiniVimrc extends Plugin {
 			return
 		}
 		const line_tokens = trimmed_line.split(' ');
-		if (this.is_map_command(line_tokens[0])) {
+
+		console.log("let mapleader",trimmed_line, trimmed_line.startsWith('let mapleader'))
+		if (trimmed_line.startsWith('let mapleader')) {
+			// Set the mapleader
+			if (line_tokens.length < 3) {
+				this.logger(`Could not set mapleader. Line "${line_tokens.join(" ")}" is not well formatted`);
+			}
+			this.mapleader = line_tokens[3];
+			this.logger(`mapleader set to ${this.mapleader}`)
+		}
+		else if (trimmed_line.contains('<leader>')) {
+			// place lines with mapleader in the queue to be processed in the end. This is to ensure that the user can set the mapleader anywhere in the file.
+			this.mapleader_queue.push(trimmed_line);
+		}
+		else if (this.is_map_command(line_tokens[0])) {
 			this.process_maps(line_tokens);
 		}
 		else {
-			this.logger(`Could not process line "${line_tokens.join(" ")}". ${line_tokens[0]} is not a map or unmap command`);
+			this.logger(`Could not process line "${line_tokens.join(" ")}". ${line_tokens[0]} is not a map or unmap command OR not a set mapleader`);
 		}
 	}
+
+	private async process_mapleader_queue() {
+		/* Process the mapleader queue */
+		this.logger(`Processing mapleader queue with ${this.mapleader_queue.length} items`);
+		for (const line of this.mapleader_queue) {
+			const replaced_line = line.replace('<leader>', this.mapleader);
+			const line_tokens = replaced_line.split(' ');
+			if (this.is_map_command(line[0])) {
+				this.process_maps(line_tokens);
+			}
+		}
+		// Flush the queue
+		this.mapleader_queue = []
+}
 
 	private async read_file(path: string): Promise<string> {
 		/* The name says it all */
